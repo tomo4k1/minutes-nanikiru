@@ -1,3 +1,3 @@
-## minutes-nanikiru
+# WXT + React
 
-- これは隙間時間に何切る問題をできる拡張機能です
+This template should help get you started developing with React in WXT.
