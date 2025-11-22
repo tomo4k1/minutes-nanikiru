@@ -58,6 +58,22 @@ npm run build
 
 出力は `.output/` ディレクトリに生成されます。
 
+### インストール方法
+
+#### Chrome
+
+1.  Chromeで `chrome://extensions/` を開きます。
+2.  右上の「デベロッパーモード」をオンにします。
+3.  「パッケージ化されていない拡張機能を読み込む」をクリックします。
+4.  `.output/chrome-mv3` ディレクトリを選択します。
+
+#### Firefox
+
+1.  Firefoxで `about:debugging#/runtime/this-firefox` を開きます。
+2.  「一時的なアドオンを読み込む...」をクリックします。
+3.  `.output/firefox-mv2/manifest.json` （または `firefox-mv3`）を選択します。
+    *   ※ビルド設定によりディレクトリ名が異なる場合があります。
+
 ## 📝 ライセンス
 
 MIT
