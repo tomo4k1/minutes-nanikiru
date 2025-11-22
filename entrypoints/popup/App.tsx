@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { calculateHand, generateRandomHand, MahjongResult } from '@/utils/mahjong';
+import { calculateHand, generateRandomHand, MahjongResult, formatTile } from '@/utils/mahjong';
 import { Hand } from '@/components/Hand';
 
 function App() {
@@ -11,19 +11,15 @@ function App() {
 
   const dealNewHand = useCallback(() => {
     setLoading(true);
-    setMessage('');
-    setSelectedTile(null);
-
-    // Generate random hand
-    const newHand = generateRandomHand();
-    setHand(newHand);
-
-    // Calculate result for the new hand
-    const handStr = newHand.join('');
-    const res = calculateHand(handStr);
-    setResult(res);
-
-    setLoading(false);
+    setTimeout(() => {
+      const newHand = generateRandomHand();
+      setHand(newHand);
+      const res = calculateHand(newHand.join(''));
+      setResult(res);
+      setLoading(false);
+      setMessage('');
+      setSelectedTile(null);
+    }, 100);
   }, []);
 
   useEffect(() => {
@@ -35,17 +31,32 @@ function App() {
 
     setSelectedTile(tile);
 
-    // Check if the clicked tile is one of the best discards
-    // We need to handle potential duplicate tiles in hand. 
-    // The logic checks if the *tile name* is in the best discards list.
-    const isBest = result.bestDiscards.some(d => d.tile === tile);
+    // Find the stats for the selected tile
+    // result.bestDiscards contains all valid discards sorted by ukeire
+    const selectedDiscardStats = result.bestDiscards.find(d => d.tile === tile);
+    const bestDiscardStats = result.bestDiscards[0];
+
+    if (!selectedDiscardStats) {
+      // Should not happen if logic is correct and tile is in hand
+      return;
+    }
+
+    const isBest = selectedDiscardStats.shanten === bestDiscardStats.shanten &&
+      selectedDiscardStats.ukeire === bestDiscardStats.ukeire;
+
+    const formatList = (list: string[]) => list.map(formatTile).join(', ');
 
     if (isBest) {
-      setMessage('Correct! ✨ That is a valid discard.');
+      setMessage(`正解！✨\n受け入れ: ${selectedDiscardStats.ukeire}枚\n待ち: ${formatList(selectedDiscardStats.ukeireList)}`);
     } else {
-      // Find the best discard to show as hint
-      const best = result.bestDiscards[0];
-      setMessage(`Oops! 🥺 Better discard might be ${best.tile} (Ukeire: ${best.ukeire})`);
+      const shantenDiff = selectedDiscardStats.shanten - bestDiscardStats.shanten;
+      const shantenMsg = shantenDiff > 0 ? ` (シャンテン数 +${shantenDiff} 😱)` : '';
+
+      setMessage(
+        `残念！🥺\n` +
+        `選んだ牌 (${formatTile(tile)}): ${selectedDiscardStats.ukeire}枚${shantenMsg} (待ち: ${formatList(selectedDiscardStats.ukeireList)})\n` +
+        `こっちの方がいいよ (${formatTile(bestDiscardStats.tile)}): ${bestDiscardStats.ukeire}枚 (待ち: ${formatList(bestDiscardStats.ukeireList)})`
+      );
     }
   };
 
@@ -57,7 +68,7 @@ function App() {
 
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
-          <p>Loading...</p>
+          <p>読み込み中...</p>
         </div>
       ) : (
         <>
@@ -71,7 +82,7 @@ function App() {
 
           <div className="min-h-[80px] text-center mb-4">
             {message && (
-              <div className={`p-3 rounded ${message.includes('Correct') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              <div className={`p-3 rounded whitespace-pre-wrap ${message.includes('正解') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                 {message}
               </div>
             )}
@@ -79,7 +90,7 @@ function App() {
 
           {result && (
             <div className="text-sm text-gray-500 mb-4">
-              Shanten: {result.shanten}
+              シャンテン数: {result.shanten}
             </div>
           )}
 
@@ -87,7 +98,7 @@ function App() {
             onClick={dealNewHand}
             className="px-6 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors shadow-lg font-medium"
           >
-            Next Hand 🀄️
+            次の問題へ 🀄️
           </button>
         </>
       )}

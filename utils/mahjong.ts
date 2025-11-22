@@ -7,6 +7,7 @@ export interface MahjongResult {
         tile: string;
         shanten: number;
         ukeire: number;
+        ukeireList: string[];
     }[];
 }
 
@@ -56,29 +57,60 @@ export const calculateHand = (handStr: string): MahjongResult => {
         // The library returns { shanten, normalDiscard, recedingDiscard } for 3n+2
         // We want to find the best discards (lowest shanten, highest ukeire)
         if ('normalDiscard' in result) {
-            const bestDiscards = [];
+            const candidates = [];
             const normalDiscard = (result as any).normalDiscard;
+            const recedingDiscard = (result as any).recedingDiscard;
 
+            // Process normal discards (keep shanten)
             for (const [discardTile, ukeireObj] of Object.entries(normalDiscard)) {
                 let totalUkeire = 0;
-                for (const count of Object.values(ukeireObj as Record<string, number>)) {
+                const ukeireList: string[] = [];
+
+                for (const [tile, count] of Object.entries(ukeireObj as Record<string, number>)) {
                     totalUkeire += count as number;
+                    ukeireList.push(tile);
                 }
 
-                bestDiscards.push({
+                candidates.push({
                     tile: discardTile,
                     shanten: result.shanten,
-                    ukeire: totalUkeire
+                    ukeire: totalUkeire,
+                    ukeireList: ukeireList.sort()
                 });
             }
 
-            // Sort by ukeire descending
-            bestDiscards.sort((a, b) => b.ukeire - a.ukeire);
+            // Process receding discards (worsen shanten)
+            if (recedingDiscard) {
+                for (const [discardTile, ukeireObj] of Object.entries(recedingDiscard)) {
+                    let totalUkeire = 0;
+                    const ukeireList: string[] = [];
+
+                    for (const [tile, count] of Object.entries(ukeireObj as Record<string, number>)) {
+                        totalUkeire += count as number;
+                        ukeireList.push(tile);
+                    }
+
+                    candidates.push({
+                        tile: discardTile,
+                        shanten: result.shanten + 1, // Shanten increases
+                        ukeire: totalUkeire,
+                        ukeireList: ukeireList.sort()
+                    });
+                }
+            }
+
+            // Sort by shanten (asc) then ukeire (desc)
+            candidates.sort((a, b) => {
+                if (a.shanten !== b.shanten) {
+                    return a.shanten - b.shanten;
+                }
+                return b.ukeire - a.ukeire;
+            });
 
             return {
                 shanten: result.shanten,
-                ukeire: bestDiscards.length > 0 ? bestDiscards[0].ukeire : 0, // Max ukeire
-                bestDiscards: bestDiscards
+                ukeire: candidates.length > 0 ? candidates[0].ukeire : 0,
+                bestDiscards: candidates
             };
         }
 
@@ -144,4 +176,25 @@ const sortHand = (tiles: string[]): string[] => {
         }
         return numA - numB;
     });
+};
+
+/**
+ * Convert tile string to Japanese text (e.g. "1z" -> "東", "1m" -> "1萬")
+ */
+export const formatTile = (tile: string): string => {
+    const suit = tile.slice(-1);
+    const num = parseInt(tile.slice(0, -1));
+
+    if (suit === 'z') {
+        const honors = ['東', '南', '西', '北', '白', '發', '中'];
+        return honors[num - 1] || tile;
+    }
+
+    const suitMap: Record<string, string> = {
+        'm': '萬',
+        'p': '筒',
+        's': '索'
+    };
+
+    return `${num}${suitMap[suit]}`;
 };
